@@ -254,6 +254,108 @@ h1 {
   font-size: 1.05rem;
 }
 
+.step-hero {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid #e2e9e5;
+  border-radius: 18px;
+  margin-bottom: 20px;
+  background: #f8fbf7;
+}
+
+.step-hero-image {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 260px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #eaf4eb 0%, #cbe4cf 100%);
+  color: #17211b;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.step-media-badge {
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: rgba(34, 53, 42, 0.9);
+  color: #ffffff;
+}
+
+.step-hero-content {
+  display: grid;
+  gap: 16px;
+}
+
+.step-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.step-number-large {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 14px;
+  background: #eef3ef;
+  font-weight: 800;
+}
+
+.step-tabs {
+  display: grid;
+  gap: 10px;
+}
+
+.step-tab {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #d7e0da;
+  border-radius: 14px;
+  background: #ffffff;
+  text-align: left;
+  color: inherit;
+}
+
+.step-tab:hover,
+.step-tab:focus-visible {
+  border-color: #9ebca4;
+  outline: none;
+}
+
+.step-tab.active {
+  border-color: #22352a;
+  background: #f0f5ef;
+}
+
+.step-tab-number {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #eef3ef;
+  font-weight: 800;
+}
+
+.step-tab strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.98rem;
+}
+
+.step-tab small {
+  color: #4a5b50;
+}
+
 .step-card {
   display: grid;
   grid-template-columns: 42px 1fr;
