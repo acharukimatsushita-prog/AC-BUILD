@@ -17,6 +17,20 @@ export type Step = {
   note?: string;
 };
 
+export type MachinePart = {
+  no: number;
+  name: string;
+  quantity: number;
+  drawingNo?: string;
+  referenceNo?: string;
+  maker?: string;
+  model?: string;
+  alternateModel?: string;
+  material?: string;
+  surface?: string;
+  remarks?: string;
+};
+
 export type Standard = {
   id: string;
   name: string;
@@ -27,9 +41,13 @@ export type Standard = {
   owner: string;
   summary?: string;
   heroImageSrc?: string;
+  drawingPdfSrc?: string;
+  fabricatedParts?: MachinePart[];
+  purchasedParts?: MachinePart[];
   sourceFile?: string;
   sourceSheet?: string;
   sourceMode?: string;
+  partsSourceFile?: string;
   steps: Step[];
 };
 
@@ -75,9 +93,368 @@ export const standards: Standard[] = [
     summary:
       "Excelの説明文と貼付写真を工程別に再構成し、組付け順、使用部品、確認ポイントを見比べやすくした標準書です。",
     heroImageSrc: vBeltImage("drawing-overview.png"),
+    drawingPdfSrc: "/drawings/v-belt-assembly-drawing.pdf",
+    fabricatedParts: [
+      {
+        no: 1,
+        drawingNo: "ASE1020-M101A,M102A",
+        referenceNo: "ASE02-M101C",
+        name: "フレーム(1/2),(2/2)",
+        material: "SS400",
+        surface: "焼付塗装",
+        quantity: 1
+      },
+      {
+        no: 2,
+        drawingNo: "ASE1020-M103",
+        referenceNo: "ASE02-M103",
+        name: "ベアリングホルダ",
+        material: "A2017",
+        quantity: 1
+      },
+      {
+        no: 3,
+        drawingNo: "ASE1020-M104",
+        referenceNo: "ASE02-M104",
+        name: "プレート",
+        material: "SPHC",
+        surface: "ユニクロメッキ",
+        quantity: 1
+      },
+      {
+        no: 4,
+        drawingNo: "ASE1020-M105A",
+        referenceNo: "ASE02-M105",
+        name: "平ワッシャ",
+        material: "S45C",
+        surface: "無電解ニッケルメッキ",
+        quantity: 2
+      },
+      {
+        no: 5,
+        drawingNo: "ASE1020-M106",
+        referenceNo: "ASE02-M106A",
+        name: "シャフト",
+        material: "S45C",
+        surface: "黒染め",
+        quantity: 1
+      },
+      {
+        no: 6,
+        drawingNo: "ASE1020-M108A",
+        referenceNo: "ASE02-M108",
+        name: "位置決めブロック",
+        material: "SS400",
+        surface: "無電解ニッケルメッキ",
+        quantity: 1
+      },
+      {
+        no: 7,
+        drawingNo: "ASE1020-M109A",
+        referenceNo: "ASE02-M109A",
+        name: "プーリカバー",
+        material: "SPHC",
+        surface: "焼付塗装",
+        quantity: 1
+      },
+      {
+        no: 8,
+        drawingNo: "ASE1020-M110B",
+        referenceNo: "ASE02-M110",
+        name: "のぞき窓",
+        material: "ポリカーボネート",
+        quantity: 1
+      },
+      {
+        no: 9,
+        drawingNo: "ASE1020-M111A",
+        referenceNo: "ASE02-M111",
+        name: "のぞき窓",
+        material: "ポリカーボネート",
+        quantity: 1
+      },
+      {
+        no: 10,
+        drawingNo: "ASE1020-M113",
+        referenceNo: "ASE02-M113",
+        name: "背面カバー",
+        material: "SPHC",
+        surface: "焼付塗装",
+        quantity: 1
+      },
+      {
+        no: 11,
+        drawingNo: "ASE1020-M114B",
+        referenceNo: "ASE02-M114A",
+        name: "右側面カバー",
+        material: "SPHC",
+        surface: "焼付塗装",
+        quantity: 1
+      },
+      {
+        no: 12,
+        drawingNo: "ASE1020-M115",
+        referenceNo: "ASE02-M115",
+        name: "左側面カバー",
+        material: "SPHC",
+        surface: "焼付塗装",
+        quantity: 1
+      },
+      {
+        no: 13,
+        drawingNo: "ASE1020-M116",
+        referenceNo: "ASE02-M116C",
+        name: "ダストBOX",
+        material: "SPHC",
+        surface: "焼付塗装",
+        quantity: 1
+      },
+      {
+        no: 14,
+        drawingNo: "ASE1020-M117A",
+        name: "カバー",
+        material: "SPHC",
+        surface: "焼付塗装",
+        quantity: 1
+      },
+      {
+        no: 15,
+        drawingNo: "ASE1020-M118B",
+        name: "カバー",
+        material: "SPHC",
+        surface: "焼付塗装",
+        quantity: 1
+      },
+      {
+        no: 16,
+        drawingNo: "ASE1020-M121",
+        referenceNo: "ASE02-M121",
+        name: "プレート",
+        material: "SUS304",
+        quantity: 1
+      },
+      {
+        no: 17,
+        drawingNo: "ASE1020-M122",
+        referenceNo: "ASE02-M122",
+        name: "プレート",
+        material: "SUS304",
+        quantity: 1
+      },
+      {
+        no: 18,
+        drawingNo: "ASE1020-M123",
+        referenceNo: "ASE02-M123",
+        name: "センサー取付板",
+        material: "SPHC",
+        surface: "ユニクロメッキ",
+        quantity: 1
+      },
+      {
+        no: 20,
+        drawingNo: "ASE1020-M125",
+        name: "プレート",
+        material: "SUS304",
+        quantity: 1
+      },
+      {
+        no: 21,
+        drawingNo: "ASE1020-M126",
+        name: "プレート",
+        material: "SUS304",
+        quantity: 1
+      }
+    ],
+    purchasedParts: [
+      {
+        no: 1,
+        maker: "ミスミ",
+        name: "ベアリングスペーサ",
+        model: "CLBPB30-40-68.2",
+        alternateModel: "CLBPB30-40-68.2",
+        quantity: 1
+      },
+      {
+        no: 2,
+        maker: "ミスミ",
+        name: "平行キー",
+        model: "KED8-32",
+        alternateModel: "KED8-35",
+        quantity: 1
+      },
+      {
+        no: 3,
+        maker: "ミスミ",
+        name: "平行キー",
+        model: "KEDW10-50",
+        alternateModel: "KEDW10-50",
+        quantity: 2
+      },
+      {
+        no: 4,
+        maker: "ミスミ",
+        name: "プラスチックノブ",
+        model: "NHM5-10",
+        alternateModel: "NHM5-10",
+        quantity: 2
+      },
+      {
+        no: 5,
+        maker: "ミスミ",
+        name: "アジャストパッド",
+        model: "FJFN16-100",
+        alternateModel: "NFJN16-100",
+        quantity: 4
+      },
+      {
+        no: 6,
+        maker: "ミスミ",
+        name: "自在キャスタ",
+        model: "CMGS75-N",
+        alternateModel: "CJMM75",
+        quantity: 1
+      },
+      {
+        no: 7,
+        maker: "ミスミ",
+        name: "自在キャスタ",
+        model: "CMGS-L75-N",
+        quantity: 1
+      },
+      {
+        no: 8,
+        maker: "ミスミ",
+        name: "固定キャスタ",
+        model: "CMGK75-N",
+        alternateModel: "CKMM75",
+        quantity: 2
+      },
+      {
+        no: 9,
+        maker: "ミスミ",
+        name: "金属ワッシャ",
+        model: "WSSB20-8-3",
+        alternateModel: "WSSB20-8-3",
+        quantity: 4
+      },
+      {
+        no: 10,
+        maker: "ミスミ",
+        name: "金属ワッシャ",
+        model: "WSSM8-4-3",
+        alternateModel: "WSSB20-8-3",
+        quantity: 2,
+        remarks: "使用せず"
+      },
+      {
+        no: 11,
+        maker: "ミスミ",
+        name: "位置決めボルト",
+        model: "STBBM10-70",
+        alternateModel: "STBBM10-70",
+        quantity: 1
+      },
+      {
+        no: 12,
+        maker: "ミスミ",
+        name: "板金",
+        model: "JTDAS-SUD-A55-B20-T3-X10-Y10-M5-L20-MA5",
+        alternateModel: "JTDAS-SUD-A55-B20-T3-X10-Y10-M5-L20-MA5",
+        quantity: 2,
+        remarks: "引出ストッパー部品"
+      },
+      {
+        no: 13,
+        maker: "ミスミ",
+        name: "金属カラー",
+        model: "KNCLSS6-15-15",
+        alternateModel: "KNCLSS6-15-15",
+        quantity: 4,
+        remarks: "引出ストッパー部品"
+      },
+      {
+        no: 14,
+        maker: "ミスミ",
+        name: "埋込み取手",
+        model: "UWUAN109.5-N",
+        alternateModel: "UWUAN109.5-N",
+        quantity: 2
+      },
+      {
+        no: 15,
+        maker: "ミスミ",
+        name: "深溝玉軸受",
+        model: "B6206ZZ",
+        alternateModel: "B6206ZZ",
+        quantity: 2
+      },
+      {
+        no: 16,
+        maker: "ミスミ",
+        name: "矢印ステッカー",
+        model: "AWRR-20",
+        alternateModel: "AWRR-20",
+        quantity: 1
+      },
+      {
+        no: 17,
+        maker: "ミスミ",
+        name: "ラバーマグネット",
+        model: "HXP1.0-20",
+        alternateModel: "HXRSL0.5-20",
+        quantity: 1,
+        remarks: "23.03.13型式変更"
+      },
+      {
+        no: 18,
+        maker: "ミスミ",
+        name: "金属ワッシャー",
+        model: "FWSSM-D17.5-V6.0-T1.5",
+        quantity: 1,
+        remarks: "24.03.11追加"
+      },
+      {
+        no: 19,
+        maker: "NBK",
+        name: "JIS Vプーリ",
+        model: "250-B-1-φ30-BKN-FN",
+        quantity: 1
+      },
+      {
+        no: 20,
+        maker: "NBK",
+        name: "JIS Vプーリ",
+        model: "150-B-1-φ18-BKW-FN",
+        quantity: 1
+      },
+      {
+        no: 21,
+        maker: "ニッセイ",
+        name: "ギアモータ",
+        model: "G3L18N15-MM02TNNTN",
+        quantity: 1
+      },
+      {
+        no: 22,
+        maker: "バンドー",
+        name: "Ｖベルト",
+        model: "B-53",
+        quantity: 1,
+        remarks: "有効長：1346ｍｍ"
+      },
+      {
+        no: 23,
+        maker: "キーエンス",
+        name: "近接センサ",
+        model: "EV-108U",
+        alternateModel: "EV-108U",
+        quantity: 1
+      }
+    ],
     sourceFile: "【1020】Vベルト巻込まれ.xlsx",
     sourceSheet: "Vベルト巻込まれ",
     sourceMode: "Excelセル本文と貼付写真を抽出し、工程別に整理",
+    partsSourceFile: "Vベルト巻込まれ安全体感装置_機械リスト.xls",
     steps: [
       {
         id: 1,
