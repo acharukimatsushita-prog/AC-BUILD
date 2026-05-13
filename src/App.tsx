@@ -12,9 +12,54 @@ import {
   Wrench
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { standards as initialStandards, type Standard, type Step } from "./data/standards";
+import { standards as initialStandards, type Standard, type Step, type StepImage, type SubStep } from "./data/standards";
 
 const STORAGE_KEY = "ac-build-standards";
+
+function mergeStepImages(initialImages?: StepImage[], savedImages?: StepImage[]) {
+  if (!initialImages?.length) {
+    return savedImages;
+  }
+
+  return initialImages.map((initialImage, index) => {
+    const savedImage = savedImages?.[index];
+
+    return savedImage
+      ? { ...initialImage, caption: savedImage.caption ?? initialImage.caption }
+      : initialImage;
+  });
+}
+
+function mergeSubSteps(initialStep: Step, savedStep: Step) {
+  if (!initialStep.subSteps?.length) {
+    return savedStep.subSteps;
+  }
+
+  return initialStep.subSteps.map((initialSubStep) => {
+    const savedSubStep = savedStep.subSteps?.find((subStep) => subStep.id === initialSubStep.id);
+
+    if (!savedSubStep) {
+      return initialSubStep;
+    }
+
+    return {
+      ...initialSubStep,
+      ...savedSubStep,
+      imageSrc: initialSubStep.imageSrc ?? savedSubStep.imageSrc,
+      images: mergeStepImages(initialSubStep.images, savedSubStep.images)
+    };
+  });
+}
+
+function getSubStepImages(subStep: SubStep): StepImage[] {
+  if (subStep.images?.length) {
+    return subStep.images;
+  }
+
+  return subStep.imageSrc
+    ? [{ src: subStep.imageSrc, caption: subStep.imageCaption ?? subStep.title, role: "main" }]
+    : [];
+}
 
 function loadStandards(): Standard[] {
   try {
@@ -40,7 +85,15 @@ function loadStandards(): Standard[] {
         steps: initialStandard.steps.map((initialStep) => {
           const savedStep = savedStandard.steps.find((step) => step.id === initialStep.id);
 
-          return savedStep ? { ...initialStep, ...savedStep } : initialStep;
+          return savedStep
+            ? {
+                ...initialStep,
+                ...savedStep,
+                imageSrc: initialStep.imageSrc ?? savedStep.imageSrc,
+                gallery: initialStep.gallery ?? savedStep.gallery,
+                subSteps: mergeSubSteps(initialStep, savedStep)
+              }
+            : initialStep;
         })
       };
     });
@@ -221,6 +274,7 @@ export function App() {
   ];
   const machinePartCount = machinePartRows.reduce((total, part) => total + part.quantity, 0);
   const selectedGallery = selectedStep.gallery ?? [];
+  const selectedSubSteps = selectedStep.subSteps ?? [];
   const primaryImage = selectedStep.imageSrc ?? selectedGallery[0]?.src ?? selected.heroImageSrc;
 
   useEffect(() => {
@@ -281,6 +335,89 @@ export function App() {
       })
     );
   };
+
+  const updateSelectedSubStep = (
+    subStepId: string,
+    field: keyof Pick<SubStep, "title" | "instruction" | "parts" | "fasteners" | "note" | "imageCaption" | "images">,
+    value: string | string[] | StepImage[]
+  ) => {
+    setStandardList((currentStandards) =>
+      currentStandards.map((standard) => {
+        if (standard.id !== selected.id) {
+          return standard;
+        }
+
+        const currentStep = standard.steps.find((step) => step.id === selectedStep.id);
+        const currentSubStep = currentStep?.subSteps?.find((subStep) => subStep.id === subStepId);
+
+        if (!currentStep || !currentSubStep || JSON.stringify(currentSubStep[field] ?? "") === JSON.stringify(value)) {
+          return standard;
+        }
+
+        let shouldBumpRevision = false;
+
+        if (
+          !revisedStandardIds.current.has(standard.id) &&
+          !revisionPromptedStandardIds.current.has(standard.id)
+        ) {
+          revisionPromptedStandardIds.current.add(standard.id);
+          shouldBumpRevision = window.confirm(
+            "編集内容に合わせてRevと更新日を変更しますか？\n\nOK: Revを更新する\nキャンセル: 内容だけ編集する"
+          );
+        }
+
+        if (shouldBumpRevision) {
+          revisedStandardIds.current.add(standard.id);
+        }
+
+        return {
+          ...standard,
+          revision: shouldBumpRevision ? bumpRevision(standard.revision) : standard.revision,
+          updatedAt: shouldBumpRevision ? getToday() : standard.updatedAt,
+          steps: standard.steps.map((step) => {
+            if (step.id !== selectedStep.id) {
+              return step;
+            }
+
+            return {
+              ...step,
+              subSteps: (step.subSteps ?? []).map((subStep) =>
+                subStep.id === subStepId ? { ...subStep, [field]: value } : subStep
+              )
+            };
+          })
+        };
+      })
+    );
+  };
+
+  const renderSubStepImageCard = (subStep: SubStep, image: StepImage, imageIndex: number) => (
+    <figure className="substep-image-card" key={`${subStep.id}-${image.src}-${imageIndex}`}>
+      <img src={image.src} alt={image.caption} />
+      {editMode && subStep.images?.length ? (
+        <label className="edit-field substep-caption-edit">
+          <span>写真{imageIndex + 1} キャプション</span>
+          <input
+            className="edit-input"
+            value={image.caption}
+            onChange={(event) =>
+              updateSelectedSubStep(
+                subStep.id,
+                "images",
+                (subStep.images ?? []).map((currentImage, currentIndex) =>
+                  currentIndex === imageIndex
+                    ? { ...currentImage, caption: event.target.value }
+                    : currentImage
+                )
+              )
+            }
+          />
+        </label>
+      ) : (
+        <figcaption>{image.caption}</figcaption>
+      )}
+    </figure>
+  );
 
   return (
     <main className="app-shell">
@@ -631,6 +768,182 @@ export function App() {
               </div>
             </article>
 
+            {selectedSubSteps.length > 0 ? (
+              <section className="substep-section" aria-label="小工程詳細">
+                <div className="section-heading compact">
+                  <ListChecks size={18} />
+                  <h3>小工程</h3>
+                  <span>{selectedSubSteps.length}件</span>
+                </div>
+                <div className="substep-list">
+                  {selectedSubSteps.map((subStep) => {
+                    const subStepImages = getSubStepImages(subStep).map((image, imageIndex) => ({
+                      image,
+                      imageIndex
+                    }));
+                    const mainImages = subStepImages.filter(({ image }) => (image.role ?? "main") === "main");
+                    const detailImages = subStepImages.filter(({ image }) => image.role === "detail");
+
+                    return (
+                    <article className="substep-card" key={subStep.id}>
+                      <div className="substep-media">
+                        {subStepImages.length > 0 ? (
+                          <>
+                            {mainImages.length > 0 ? (
+                              <div className="substep-image-group main">
+                                <span className="image-group-label">主写真</span>
+                                <div className="substep-image-grid main">
+                                  {mainImages.map(({ image, imageIndex }) =>
+                                    renderSubStepImageCard(subStep, image, imageIndex)
+                                  )}
+                                </div>
+                              </div>
+                            ) : null}
+                            {detailImages.length > 0 ? (
+                              <div className="substep-image-group detail">
+                                <span className="image-group-label">詳細</span>
+                                <div className="substep-image-grid detail">
+                                  {detailImages.map(({ image, imageIndex }) =>
+                                    renderSubStepImageCard(subStep, image, imageIndex)
+                                  )}
+                                </div>
+                              </div>
+                            ) : null}
+                          </>
+                        ) : (
+                          <ImageIcon size={40} aria-hidden="true" />
+                        )}
+                        {editMode && !subStep.images?.length ? (
+                          <label className="edit-field substep-caption-edit">
+                            <span>写真キャプション</span>
+                            <input
+                              className="edit-input"
+                              value={subStep.imageCaption ?? ""}
+                              onChange={(event) =>
+                                updateSelectedSubStep(subStep.id, "imageCaption", event.target.value)
+                              }
+                              placeholder="写真の説明"
+                            />
+                          </label>
+                        ) : !subStep.images?.length && subStep.imageCaption ? (
+                          <span>{subStep.imageCaption}</span>
+                        ) : null}
+                      </div>
+
+                      <div className="substep-content">
+                        <div className="substep-heading">
+                          <span>{subStep.id}</span>
+                          {editMode ? (
+                            <input
+                              className="edit-input substep-title-input"
+                              value={subStep.title}
+                              onChange={(event) => updateSelectedSubStep(subStep.id, "title", event.target.value)}
+                              aria-label={`${subStep.id} 小工程名`}
+                            />
+                          ) : (
+                            <h4>{subStep.title}</h4>
+                          )}
+                        </div>
+
+                        {editMode ? (
+                          <label className="edit-field">
+                            <span>作業指示</span>
+                            <textarea
+                              value={subStep.instruction}
+                              onChange={(event) =>
+                                updateSelectedSubStep(subStep.id, "instruction", event.target.value)
+                              }
+                            />
+                          </label>
+                        ) : (
+                          <p>{subStep.instruction}</p>
+                        )}
+
+                        {editMode ? (
+                          <label className="edit-field">
+                            <span>小工程メモ</span>
+                            <textarea
+                              value={subStep.note ?? ""}
+                              onChange={(event) => updateSelectedSubStep(subStep.id, "note", event.target.value)}
+                              placeholder="補足や注意点"
+                            />
+                          </label>
+                        ) : subStep.note ? (
+                          <div className="note-box compact-note">
+                            <Info size={16} />
+                            <span>{subStep.note}</span>
+                          </div>
+                        ) : null}
+
+                        <div className="substep-resources">
+                          <div>
+                            <strong>使用部品</strong>
+                            {editMode ? (
+                              <label className="edit-field substep-list-edit">
+                                <span>1行につき1部品</span>
+                                <textarea
+                                  value={(subStep.parts ?? []).join("\n")}
+                                  onChange={(event) =>
+                                    updateSelectedSubStep(
+                                      subStep.id,
+                                      "parts",
+                                      event.target.value
+                                        .split("\n")
+                                        .map((part) => part.trim())
+                                        .filter(Boolean)
+                                    )
+                                  }
+                                />
+                              </label>
+                            ) : subStep.parts && subStep.parts.length > 0 ? (
+                              <ul>
+                                {subStep.parts.map((part) => (
+                                  <li key={`${subStep.id}-${part}`}>{part}</li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <small>指定なし</small>
+                            )}
+                          </div>
+
+                          <div>
+                            <strong>使用ボルト・締結部品</strong>
+                            {editMode ? (
+                              <label className="edit-field substep-list-edit">
+                                <span>1行につき1項目</span>
+                                <textarea
+                                  value={(subStep.fasteners ?? []).join("\n")}
+                                  onChange={(event) =>
+                                    updateSelectedSubStep(
+                                      subStep.id,
+                                      "fasteners",
+                                      event.target.value
+                                        .split("\n")
+                                        .map((fastener) => fastener.trim())
+                                        .filter(Boolean)
+                                    )
+                                  }
+                                />
+                              </label>
+                            ) : subStep.fasteners && subStep.fasteners.length > 0 ? (
+                              <ul>
+                                {subStep.fasteners.map((fastener) => (
+                                  <li key={`${subStep.id}-${fastener}`}>{fastener}</li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <small>指定なし</small>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
+
             {selectedGallery.length > 0 ? (
               <section className="gallery-section" aria-label="Excelから抽出した写真">
                 <div className="section-heading compact">
@@ -668,7 +981,11 @@ export function App() {
                     <div>
                       <strong>{step.title}</strong>
                       <small>
-                        {step.sourceRows ? `Excel行 ${step.sourceRows}` : `${step.gallery?.length ?? 0}枚`}
+                        {step.subSteps?.length
+                          ? `小工程 ${step.subSteps.length}件 / Excel行 ${step.sourceRows ?? "-"}`
+                          : step.sourceRows
+                          ? `Excel行 ${step.sourceRows}`
+                          : `${step.gallery?.length ?? 0}枚`}
                       </small>
                     </div>
                   </button>
