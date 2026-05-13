@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   CheckCircle2,
   Eye,
   FilePenLine,
@@ -171,7 +172,8 @@ function isFastener(material: string) {
 
 export function App() {
   const [standardList, setStandardList] = useState<Standard[]>(loadStandards);
-  const [selectedId, setSelectedId] = useState("v-belt-entanglement");
+  const [selectedId, setSelectedId] = useState("");
+  const [viewMode, setViewMode] = useState<"selection" | "detail">("selection");
   const [selectedStepId, setSelectedStepId] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [editMode, setEditMode] = useState(false);
@@ -198,8 +200,15 @@ export function App() {
   );
 
   useEffect(() => {
-    setSelectedStepId(selected.steps[0]?.id ?? 0);
-  }, [selectedId, selected.steps]);
+    if (selected) {
+      setSelectedStepId(selected.steps[0]?.id ?? 0);
+    }
+  }, [selectedId, selected?.steps]);
+
+  const handleSelectStandard = (id: string) => {
+    setSelectedId(id);
+    setViewMode("detail");
+  };
 
   const selectedStep = useMemo(
     () => selected.steps.find((step) => step.id === selectedStepId) ?? selected.steps[0],
@@ -421,555 +430,58 @@ export function App() {
 
   return (
     <main className="app-shell">
-      <aside className="sidebar" aria-label="標準書一覧">
-        <div className="brand-block">
-          <div className="brand-mark">AC</div>
-          <div>
-            <p className="eyebrow">Assembly Standard</p>
-            <h1>AC-BUILD</h1>
-          </div>
-        </div>
+      <aside className="sidebar" aria-label={viewMode === "selection" ? "体感装置選択" : "工程一覧"}>
+        {viewMode === "selection" ? (
+          <>
+            <div className="brand-block">
+              <div className="brand-mark">AC</div>
+              <div>
+                <p className="eyebrow">Assembly Standard</p>
+                <h1>AC-BUILD</h1>
+              </div>
+            </div>
 
-        <label className="search-box">
-          <Search size={18} aria-hidden="true" />
-          <input
-            placeholder="標準書名で検索"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-          />
-        </label>
+            <label className="search-box">
+              <Search size={18} aria-hidden="true" />
+              <input
+                placeholder="標準書名で検索"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+            </label>
 
-        <nav className="standard-list">
-          {filteredStandards.map((standard) => (
-            <button
-              className={standard.id === selected.id ? "standard-item active" : "standard-item"}
-              key={standard.id}
-              onClick={() => setSelectedId(standard.id)}
-            >
-              <span>{standard.name}</span>
-              <small>
-                {standard.revision} / {standard.status}
-              </small>
+            <nav className="standard-list">
+              {filteredStandards.map((standard) => (
+                <button
+                  className={standard.id === selectedId ? "standard-item active" : "standard-item"}
+                  key={standard.id}
+                  onClick={() => handleSelectStandard(standard.id)}
+                >
+                  <span>{standard.name}</span>
+                  <small>
+                    {standard.revision} / {standard.status}
+                  </small>
+                </button>
+              ))}
+              {filteredStandards.length === 0 ? <p className="empty-text">該当する標準書がありません。</p> : null}
+            </nav>
+          </>
+        ) : (
+          <div className="process-sidebar-content">
+            <button className="back-button" onClick={() => setViewMode("selection")}>
+              <ArrowLeft size={18} />
+              <span>装置選択に戻る</span>
             </button>
-          ))}
-          {filteredStandards.length === 0 ? <p className="empty-text">該当する標準書がありません。</p> : null}
-        </nav>
-      </aside>
-
-      <section className="workspace">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">{selected.category}</p>
-            <h2>{selected.name}</h2>
-            {selected.summary ? <p className="lead-text">{selected.summary}</p> : null}
-          </div>
-          <div className="topbar-side">
-            <div className={editMode ? "mode-status edit" : "mode-status"} aria-live="polite">
-              {editMode ? <FilePenLine size={17} /> : <Eye size={17} />}
-              <span>{editMode ? "現在: 編集モード" : "現在: 閲覧モード"}</span>
+            <div className="selected-device-info">
+              <p className="eyebrow">{selected.category}</p>
+              <h3>{selected.name}</h3>
             </div>
-            <button
-              className={editMode ? "mode-action return" : "mode-action"}
-              type="button"
-              onClick={handleModeToggle}
-              aria-pressed={editMode}
-            >
-              {editMode ? <Eye size={17} /> : <FilePenLine size={17} />}
-              <span>{editMode ? "閲覧モードに戻る" : "編集モード"}</span>
-            </button>
-            {selected.heroImageSrc ? (
-              <div className="topbar-preview">
-                <img src={selected.heroImageSrc} alt={`${selected.name} 図面`} />
-              </div>
-            ) : null}
-          </div>
-        </header>
-
-        <section className="summary-band">
-          <div>
-            <span>版数</span>
-            <strong>{selected.revision}</strong>
-          </div>
-          <div>
-            <span>状態</span>
-            <strong>{selected.status}</strong>
-          </div>
-          <div>
-            <span>更新日</span>
-            <strong>{selected.updatedAt}</strong>
-          </div>
-          <div>
-            <span>管理部門</span>
-            <strong>{selected.owner}</strong>
-          </div>
-        </section>
-
-        {selected.sourceFile ? (
-          <section className="source-band" aria-label="Excel原本情報">
-            <FileSpreadsheet size={20} />
-            <div>
-              <strong>{selected.sourceFile}</strong>
-              <span>
-                シート: {selected.sourceSheet} / {selected.sourceMode}
-              </span>
-              {selected.partsSourceFile ? <span>部品リスト: {selected.partsSourceFile}</span> : null}
-              {selected.drawingPdfSrc ? (
-                <a href={selected.drawingPdfSrc} target="_blank" rel="noreferrer">
-                  組立図面PDFを開く
-                </a>
-              ) : null}
-            </div>
-          </section>
-        ) : null}
-
-        {machinePartRows.length > 0 ? (
-          <section className="machine-list-panel" aria-label="正規部品リスト">
-            <div className="section-heading compact">
-              <FileSpreadsheet size={20} />
-              <h3>正規部品リスト</h3>
-              <span>機械リスト {machinePartRows.length}行 / 数量合計 {machinePartCount}</span>
-            </div>
-            <div className="machine-list-table-wrap">
-              <table className="machine-list-table">
-                <thead>
-                  <tr>
-                    <th>区分</th>
-                    <th>No.</th>
-                    <th>名称</th>
-                    <th>図番・型式</th>
-                    <th>材質 / メーカー</th>
-                    <th>数量</th>
-                    <th>備考</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {machinePartRows.map((part) => (
-                    <tr key={`${part.category}-${part.no}-${part.name}-${part.model ?? part.drawingNo ?? ""}`}>
-                      <td>{part.category}</td>
-                      <td>{part.no}</td>
-                      <td>{part.name}</td>
-                      <td>{part.model ?? part.drawingNo ?? "-"}</td>
-                      <td>{part.maker ?? part.material ?? "-"}</td>
-                      <td>{part.quantity}</td>
-                      <td>{part.remarks ?? part.surface ?? "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        ) : null}
-
-        {preparationSteps.length > 0 ? (
-          <section className="preparation-panel" aria-label="組立前準備">
-            <div className="section-heading compact">
-              <PackageCheck size={20} />
-              <h3>組立前準備</h3>
-              <span>ボルト優先準備リスト</span>
-            </div>
-            {preparation.fasteners.length > 0 ? (
-              <section className="fastener-section" aria-label="ボルト・締結部品">
-                <div className="preparation-subheading">
-                  <h4>ボルト・締結部品</h4>
-                  <span>合計 {fastenerItemCount}点</span>
-                </div>
-                <div className="fastener-table-wrap">
-                  <table className="fastener-table">
-                    <thead>
-                      <tr>
-                        <th>種類</th>
-                        <th>サイズ</th>
-                        <th>数量</th>
-                        <th>使用工程</th>
-                        <th>原文</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {preparation.fasteners.map((fastener) => (
-                        <tr key={`${fastener.type}-${fastener.size}`}>
-                          <td>{fastener.type}</td>
-                          <td>{fastener.size}</td>
-                          <td>{fastener.quantity}</td>
-                          <td>
-                            {Array.from(fastener.steps)
-                              .sort((a, b) => a - b)
-                              .map((step) => `工程${step}`)
-                              .join("、")}
-                          </td>
-                          <td>{Array.from(fastener.originals).join(" / ")}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            ) : null}
-
-            {preparation.componentSteps.length > 0 ? (
-              <section className="component-section" aria-label="部材・購入品">
-                <div className="preparation-subheading">
-                  <h4>部材・購入品</h4>
-                  <span>{componentItemCount}項目</span>
-                </div>
-                <div className="preparation-grid">
-                  {preparation.componentSteps.map((step) => (
-                    <article className="preparation-step" key={step.id}>
-                      <div className="preparation-step-title">
-                        <span>{step.id}</span>
-                        <strong>{step.title}</strong>
-                      </div>
-                      <ul>
-                        {step.materials.map((material) => (
-                          <li key={`${step.id}-${material}`}>{material}</li>
-                        ))}
-                      </ul>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-          </section>
-        ) : null}
-
-        <div className="content-grid">
-          <section className="steps-panel" aria-label="工程詳細">
-            <div className="section-heading">
-              <Wrench size={20} />
-              <h3>工程詳細</h3>
-            </div>
-
-            <article className="step-hero">
-              <div className={primaryImage ? "step-hero-image has-photo" : "step-hero-image"}>
-                {primaryImage ? (
-                  <img className="step-photo" src={primaryImage} alt={selectedStep.title} />
-                ) : (
-                  <ImageIcon size={46} aria-hidden="true" />
-                )}
-                <div className="step-media-badge">
-                  {selectedStep.media === "photo"
-                    ? "Excel写真"
-                    : selectedStep.media === "video"
-                    ? "動画"
-                    : "資料なし"}
-                </div>
-              </div>
-
-              <div className="step-hero-content">
-                <div className="step-hero-meta">
-                  <div className="step-number step-number-large">{selectedStep.id}</div>
-                  <div>
-                    <p className="eyebrow">選択中の工程</p>
-                    {editMode ? (
-                      <input
-                        className="edit-input step-title-input"
-                        value={selectedStep.title}
-                        onChange={(event) => updateSelectedStep("title", event.target.value)}
-                        aria-label="工程名"
-                      />
-                    ) : (
-                      <h4>{selectedStep.title}</h4>
-                    )}
-                    {selectedStep.sourceRows ? (
-                      <small className="source-rows">Excel行 {selectedStep.sourceRows}</small>
-                    ) : null}
-                  </div>
-                </div>
-
-                {editMode ? (
-                  <label className="edit-field">
-                    <span>作業内容</span>
-                    <textarea
-                      value={selectedStep.work}
-                      onChange={(event) => updateSelectedStep("work", event.target.value)}
-                    />
-                  </label>
-                ) : (
-                  <p className="step-work">{selectedStep.work}</p>
-                )}
-
-                {editMode ? (
-                  <label className="edit-field">
-                    <span>メモ</span>
-                    <textarea
-                      value={selectedStep.note ?? ""}
-                      onChange={(event) => updateSelectedStep("note", event.target.value)}
-                      placeholder="注意メモを入力"
-                    />
-                  </label>
-                ) : selectedStep.note ? (
-                  <div className="note-box">
-                    <Info size={17} />
-                    <span>{selectedStep.note}</span>
-                  </div>
-                ) : null}
-
-                <div className="check-grid">
-                  <div>
-                    <ShieldCheck size={17} />
-                    {editMode ? (
-                      <label className="edit-field inline">
-                        <span>安全</span>
-                        <textarea
-                          value={selectedStep.safety}
-                          onChange={(event) => updateSelectedStep("safety", event.target.value)}
-                        />
-                      </label>
-                    ) : (
-                      <span>{selectedStep.safety}</span>
-                    )}
-                  </div>
-                  <div>
-                    <CheckCircle2 size={17} />
-                    {editMode ? (
-                      <label className="edit-field inline">
-                        <span>品質</span>
-                        <textarea
-                          value={selectedStep.quality}
-                          onChange={(event) => updateSelectedStep("quality", event.target.value)}
-                        />
-                      </label>
-                    ) : (
-                      <span>{selectedStep.quality}</span>
-                    )}
-                  </div>
-                </div>
-
-                {selectedStep.materials && selectedStep.materials.length > 0 ? (
-                  <div className="materials-block">
-                    <div className="materials-title">
-                      <PackageCheck size={17} />
-                      <span>使用部品・締結部品</span>
-                    </div>
-                    {editMode ? (
-                      <label className="edit-field materials-edit">
-                        <span>1行につき1部品で入力</span>
-                        <textarea
-                          value={selectedStep.materials.join("\n")}
-                          onChange={(event) =>
-                            updateSelectedStep(
-                              "materials",
-                              event.target.value
-                                .split("\n")
-                                .map((material) => material.trim())
-                                .filter(Boolean)
-                            )
-                          }
-                        />
-                      </label>
-                    ) : (
-                      <ul>
-                        {selectedStep.materials.map((material) => (
-                          <li key={material}>{material}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ) : null}
-              </div>
-            </article>
-
-            {selectedSubSteps.length > 0 ? (
-              <section className="substep-section" aria-label="小工程詳細">
-                <div className="section-heading compact">
-                  <ListChecks size={18} />
-                  <h3>小工程</h3>
-                  <span>{selectedSubSteps.length}件</span>
-                </div>
-                <div className="substep-list">
-                  {selectedSubSteps.map((subStep) => {
-                    const subStepImages = getSubStepImages(subStep).map((image, imageIndex) => ({
-                      image,
-                      imageIndex
-                    }));
-                    const mainImages = subStepImages.filter(({ image }) => (image.role ?? "main") === "main");
-                    const detailImages = subStepImages.filter(({ image }) => image.role === "detail");
-
-                    return (
-                    <article className="substep-card" key={subStep.id}>
-                      <div className="substep-media">
-                        {subStepImages.length > 0 ? (
-                          <>
-                            {mainImages.length > 0 ? (
-                              <div className="substep-image-group main">
-                                <span className="image-group-label">主写真</span>
-                                <div className="substep-image-grid main">
-                                  {mainImages.map(({ image, imageIndex }) =>
-                                    renderSubStepImageCard(subStep, image, imageIndex)
-                                  )}
-                                </div>
-                              </div>
-                            ) : null}
-                            {detailImages.length > 0 ? (
-                              <div className="substep-image-group detail">
-                                <span className="image-group-label">詳細</span>
-                                <div className="substep-image-grid detail">
-                                  {detailImages.map(({ image, imageIndex }) =>
-                                    renderSubStepImageCard(subStep, image, imageIndex)
-                                  )}
-                                </div>
-                              </div>
-                            ) : null}
-                          </>
-                        ) : (
-                          <ImageIcon size={40} aria-hidden="true" />
-                        )}
-                        {editMode && !subStep.images?.length ? (
-                          <label className="edit-field substep-caption-edit">
-                            <span>写真キャプション</span>
-                            <input
-                              className="edit-input"
-                              value={subStep.imageCaption ?? ""}
-                              onChange={(event) =>
-                                updateSelectedSubStep(subStep.id, "imageCaption", event.target.value)
-                              }
-                              placeholder="写真の説明"
-                            />
-                          </label>
-                        ) : !subStep.images?.length && subStep.imageCaption ? (
-                          <span>{subStep.imageCaption}</span>
-                        ) : null}
-                      </div>
-
-                      <div className="substep-content">
-                        <div className="substep-heading">
-                          <span>{subStep.id}</span>
-                          {editMode ? (
-                            <input
-                              className="edit-input substep-title-input"
-                              value={subStep.title}
-                              onChange={(event) => updateSelectedSubStep(subStep.id, "title", event.target.value)}
-                              aria-label={`${subStep.id} 小工程名`}
-                            />
-                          ) : (
-                            <h4>{subStep.title}</h4>
-                          )}
-                        </div>
-
-                        {editMode ? (
-                          <label className="edit-field">
-                            <span>作業指示</span>
-                            <textarea
-                              value={subStep.instruction}
-                              onChange={(event) =>
-                                updateSelectedSubStep(subStep.id, "instruction", event.target.value)
-                              }
-                            />
-                          </label>
-                        ) : (
-                          <p>{subStep.instruction}</p>
-                        )}
-
-                        {editMode ? (
-                          <label className="edit-field">
-                            <span>小工程メモ</span>
-                            <textarea
-                              value={subStep.note ?? ""}
-                              onChange={(event) => updateSelectedSubStep(subStep.id, "note", event.target.value)}
-                              placeholder="補足や注意点"
-                            />
-                          </label>
-                        ) : subStep.note ? (
-                          <div className="note-box compact-note">
-                            <Info size={16} />
-                            <span>{subStep.note}</span>
-                          </div>
-                        ) : null}
-
-                        <div className="substep-resources">
-                          <div>
-                            <strong>使用部品</strong>
-                            {editMode ? (
-                              <label className="edit-field substep-list-edit">
-                                <span>1行につき1部品</span>
-                                <textarea
-                                  value={(subStep.parts ?? []).join("\n")}
-                                  onChange={(event) =>
-                                    updateSelectedSubStep(
-                                      subStep.id,
-                                      "parts",
-                                      event.target.value
-                                        .split("\n")
-                                        .map((part) => part.trim())
-                                        .filter(Boolean)
-                                    )
-                                  }
-                                />
-                              </label>
-                            ) : subStep.parts && subStep.parts.length > 0 ? (
-                              <ul>
-                                {subStep.parts.map((part) => (
-                                  <li key={`${subStep.id}-${part}`}>{part}</li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <small>指定なし</small>
-                            )}
-                          </div>
-
-                          <div>
-                            <strong>使用ボルト・締結部品</strong>
-                            {editMode ? (
-                              <label className="edit-field substep-list-edit">
-                                <span>1行につき1項目</span>
-                                <textarea
-                                  value={(subStep.fasteners ?? []).join("\n")}
-                                  onChange={(event) =>
-                                    updateSelectedSubStep(
-                                      subStep.id,
-                                      "fasteners",
-                                      event.target.value
-                                        .split("\n")
-                                        .map((fastener) => fastener.trim())
-                                        .filter(Boolean)
-                                    )
-                                  }
-                                />
-                              </label>
-                            ) : subStep.fasteners && subStep.fasteners.length > 0 ? (
-                              <ul>
-                                {subStep.fasteners.map((fastener) => (
-                                  <li key={`${subStep.id}-${fastener}`}>{fastener}</li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <small>指定なし</small>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </article>
-                    );
-                  })}
-                </div>
-              </section>
-            ) : null}
-
-            {selectedGallery.length > 0 ? (
-              <section className="gallery-section" aria-label="Excelから抽出した写真">
-                <div className="section-heading compact">
-                  <ImageIcon size={18} />
-                  <h3>Excel写真</h3>
-                  <span>{selectedGallery.length}枚</span>
-                </div>
-                <div className="photo-gallery">
-                  {selectedGallery.map((image) => (
-                    <figure key={image.src} className="photo-card">
-                      <img src={image.src} alt={image.caption} />
-                      <figcaption>{image.caption}</figcaption>
-                    </figure>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-          </section>
-
-          <aside className="side-panel">
-            <section className="operation-panel" aria-label="工程一覧">
+            <section className="sidebar-operation-panel">
               <div className="section-heading">
                 <ListChecks size={20} />
                 <h3>工程一覧</h3>
               </div>
-              <div className="step-tabs" role="tablist" aria-label="工程一覧">
+              <div className="step-tabs">
                 {selected.steps.map((step) => (
                   <button
                     key={step.id}
@@ -982,7 +494,7 @@ export function App() {
                       <strong>{step.title}</strong>
                       <small>
                         {step.subSteps?.length
-                          ? `小工程 ${step.subSteps.length}件 / Excel行 ${step.sourceRows ?? "-"}`
+                          ? `小工程 ${step.subSteps.length}件`
                           : step.sourceRows
                           ? `Excel行 ${step.sourceRows}`
                           : `${step.gallery?.length ?? 0}枚`}
@@ -992,33 +504,587 @@ export function App() {
                 ))}
               </div>
             </section>
+          </div>
+        )}
+      </aside>
 
-            <section className="operation-panel source-panel" aria-label="抽出元">
-              <div className="section-heading">
-                <FileSpreadsheet size={20} />
-                <h3>抽出元</h3>
+      <section className="workspace">
+        {viewMode === "selection" ? (
+          <div className="selection-screen">
+            <header className="selection-header">
+              <p className="eyebrow">Select Device</p>
+              <h2>体感装置を選択してください</h2>
+              <p className="lead-text">
+                組立標準書を確認する装置を選択してください。PC・タブレットのどちらからでも快適に閲覧できます。
+              </p>
+            </header>
+
+            <div className="selection-grid">
+              {filteredStandards.map((standard) => (
+                <button
+                  key={standard.id}
+                  className="selection-card"
+                  onClick={() => handleSelectStandard(standard.id)}
+                >
+                  <div className="selection-card-visual">
+                    {standard.heroImageSrc ? (
+                      <img src={standard.heroImageSrc} alt={standard.name} />
+                    ) : (
+                      <div className="visual-placeholder">
+                        <ImageIcon size={48} />
+                      </div>
+                    )}
+                    <div className="card-badge">{standard.category}</div>
+                  </div>
+                  <div className="selection-card-content">
+                    <h3>{standard.name}</h3>
+                    <p>{standard.summary || "組立手順の詳細を確認します。"}</p>
+                    <div className="card-footer">
+                      <span>{standard.revision}</span>
+                      <span className="status-tag">{standard.status}</span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            <header className="topbar">
+              <div>
+                <p className="eyebrow">{selected.category}</p>
+                <h2>{selected.name}</h2>
+                {selected.summary ? <p className="lead-text">{selected.summary}</p> : null}
               </div>
-              <dl className="source-list">
-                <div>
-                  <dt>ファイル</dt>
-                  <dd>{selected.sourceFile ?? "未設定"}</dd>
+              <div className="topbar-side">
+                <div className={editMode ? "mode-status edit" : "mode-status"} aria-live="polite">
+                  {editMode ? <FilePenLine size={17} /> : <Eye size={17} />}
+                  <span>{editMode ? "現在: 編集モード" : "現在: 閲覧モード"}</span>
                 </div>
-                <div>
-                  <dt>シート</dt>
-                  <dd>{selected.sourceSheet ?? "未設定"}</dd>
-                </div>
-                <div>
-                  <dt>選択工程</dt>
-                  <dd>{selectedStep.sourceRows ? `Excel行 ${selectedStep.sourceRows}` : "行情報なし"}</dd>
-                </div>
-                <div>
-                  <dt>写真</dt>
-                  <dd>{selectedGallery.length}枚</dd>
-                </div>
-              </dl>
+                <button
+                  className={editMode ? "mode-action return" : "mode-action"}
+                  type="button"
+                  onClick={handleModeToggle}
+                  aria-pressed={editMode}
+                >
+                  {editMode ? <Eye size={17} /> : <FilePenLine size={17} />}
+                  <span>{editMode ? "閲覧モードに戻る" : "編集モード"}</span>
+                </button>
+                {selected.heroImageSrc ? (
+                  <div className="topbar-preview">
+                    <img src={selected.heroImageSrc} alt={`${selected.name} 図面`} />
+                  </div>
+                ) : null}
+              </div>
+            </header>
+
+            <section className="summary-band">
+              <div>
+                <span>版数</span>
+                <strong>{selected.revision}</strong>
+              </div>
+              <div>
+                <span>状態</span>
+                <strong>{selected.status}</strong>
+              </div>
+              <div>
+                <span>更新日</span>
+                <strong>{selected.updatedAt}</strong>
+              </div>
+              <div>
+                <span>管理部門</span>
+                <strong>{selected.owner}</strong>
+              </div>
             </section>
-          </aside>
-        </div>
+
+            {selected.sourceFile ? (
+              <section className="source-band" aria-label="Excel原本情報">
+                <FileSpreadsheet size={20} />
+                <div>
+                  <strong>{selected.sourceFile}</strong>
+                  <span>
+                    シート: {selected.sourceSheet} / {selected.sourceMode}
+                  </span>
+                  {selected.partsSourceFile ? <span>部品リスト: {selected.partsSourceFile}</span> : null}
+                  {selected.drawingPdfSrc ? (
+                    <a href={selected.drawingPdfSrc} target="_blank" rel="noreferrer">
+                      組立図面PDFを開く
+                    </a>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
+
+            {machinePartRows.length > 0 ? (
+              <section className="machine-list-panel" aria-label="正規部品リスト">
+                <div className="section-heading compact">
+                  <FileSpreadsheet size={20} />
+                  <h3>正規部品リスト</h3>
+                  <span>機械リスト {machinePartRows.length}行 / 数量合計 {machinePartCount}</span>
+                </div>
+                <div className="machine-list-table-wrap">
+                  <table className="machine-list-table">
+                    <thead>
+                      <tr>
+                        <th>区分</th>
+                        <th>No.</th>
+                        <th>名称</th>
+                        <th>図番・型式</th>
+                        <th>材質 / メーカー</th>
+                        <th>数量</th>
+                        <th>備考</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {machinePartRows.map((part) => (
+                        <tr key={`${part.category}-${part.no}-${part.name}-${part.model ?? part.drawingNo ?? ""}`}>
+                          <td>{part.category}</td>
+                          <td>{part.no}</td>
+                          <td>{part.name}</td>
+                          <td>{part.model ?? part.drawingNo ?? "-"}</td>
+                          <td>{part.maker ?? part.material ?? "-"}</td>
+                          <td>{part.quantity}</td>
+                          <td>{part.remarks ?? part.surface ?? "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ) : null}
+
+            {preparationSteps.length > 0 ? (
+              <section className="preparation-panel" aria-label="組立前準備">
+                <div className="section-heading compact">
+                  <PackageCheck size={20} />
+                  <h3>組立前準備</h3>
+                  <span>ボルト優先準備リスト</span>
+                </div>
+                {preparation.fasteners.length > 0 ? (
+                  <section className="fastener-section" aria-label="ボルト・締結部品">
+                    <div className="preparation-subheading">
+                      <h4>ボルト・締結部品</h4>
+                      <span>合計 {fastenerItemCount}点</span>
+                    </div>
+                    <div className="fastener-table-wrap">
+                      <table className="fastener-table">
+                        <thead>
+                          <tr>
+                            <th>種類</th>
+                            <th>サイズ</th>
+                            <th>数量</th>
+                            <th>使用工程</th>
+                            <th>原文</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {preparation.fasteners.map((fastener) => (
+                            <tr key={`${fastener.type}-${fastener.size}`}>
+                              <td>{fastener.type}</td>
+                              <td>{fastener.size}</td>
+                              <td>{fastener.quantity}</td>
+                              <td>
+                                {Array.from(fastener.steps)
+                                  .sort((a, b) => a - b)
+                                  .map((step) => `工程${step}`)
+                                  .join("、")}
+                              </td>
+                              <td>{Array.from(fastener.originals).join(" / ")}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                ) : null}
+
+                {preparation.componentSteps.length > 0 ? (
+                  <section className="component-section" aria-label="部材・購入品">
+                    <div className="preparation-subheading">
+                      <h4>部材・購入品</h4>
+                      <span>{componentItemCount}項目</span>
+                    </div>
+                    <div className="preparation-grid">
+                      {preparation.componentSteps.map((step) => (
+                        <article className="preparation-step" key={step.id}>
+                          <div className="preparation-step-title">
+                            <span>{step.id}</span>
+                            <strong>{step.title}</strong>
+                          </div>
+                          <ul>
+                            {step.materials.map((material) => (
+                              <li key={`${step.id}-${material}`}>{material}</li>
+                            ))}
+                          </ul>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+              </section>
+            ) : null}
+
+            <div className="content-grid single-col">
+              <section className="steps-panel" aria-label="工程詳細">
+                <div className="section-heading">
+                  <Wrench size={20} />
+                  <h3>工程詳細</h3>
+                </div>
+
+                <article className="step-hero">
+                  <div className={primaryImage ? "step-hero-image has-photo" : "step-hero-image"}>
+                    {primaryImage ? (
+                      <img className="step-photo" src={primaryImage} alt={selectedStep.title} />
+                    ) : (
+                      <ImageIcon size={46} aria-hidden="true" />
+                    )}
+                    <div className="step-media-badge">
+                      {selectedStep.media === "photo"
+                        ? "Excel写真"
+                        : selectedStep.media === "video"
+                        ? "動画"
+                        : "資料なし"}
+                    </div>
+                  </div>
+
+                  <div className="step-hero-content">
+                    <div className="step-hero-meta">
+                      <div className="step-number step-number-large">{selectedStep.id}</div>
+                      <div>
+                        <p className="eyebrow">選択中の工程</p>
+                        {editMode ? (
+                          <input
+                            className="edit-input step-title-input"
+                            value={selectedStep.title}
+                            onChange={(event) => updateSelectedStep("title", event.target.value)}
+                            aria-label="工程名"
+                          />
+                        ) : (
+                          <h4>{selectedStep.title}</h4>
+                        )}
+                        {selectedStep.sourceRows ? (
+                          <small className="source-rows">Excel行 {selectedStep.sourceRows}</small>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {editMode ? (
+                      <label className="edit-field">
+                        <span>作業内容</span>
+                        <textarea
+                          value={selectedStep.work}
+                          onChange={(event) => updateSelectedStep("work", event.target.value)}
+                        />
+                      </label>
+                    ) : (
+                      <p className="step-work">{selectedStep.work}</p>
+                    )}
+
+                    {editMode ? (
+                      <label className="edit-field">
+                        <span>メモ</span>
+                        <textarea
+                          value={selectedStep.note ?? ""}
+                          onChange={(event) => updateSelectedStep("note", event.target.value)}
+                          placeholder="注意メモを入力"
+                        />
+                      </label>
+                    ) : selectedStep.note ? (
+                      <div className="note-box">
+                        <Info size={17} />
+                        <span>{selectedStep.note}</span>
+                      </div>
+                    ) : null}
+
+                    <div className="check-grid">
+                      <div>
+                        <ShieldCheck size={17} />
+                        {editMode ? (
+                          <label className="edit-field inline">
+                            <span>安全</span>
+                            <textarea
+                              value={selectedStep.safety}
+                              onChange={(event) => updateSelectedStep("safety", event.target.value)}
+                            />
+                          </label>
+                        ) : (
+                          <span>{selectedStep.safety}</span>
+                        )}
+                      </div>
+                      <div>
+                        <CheckCircle2 size={17} />
+                        {editMode ? (
+                          <label className="edit-field inline">
+                            <span>品質</span>
+                            <textarea
+                              value={selectedStep.quality}
+                              onChange={(event) => updateSelectedStep("quality", event.target.value)}
+                            />
+                          </label>
+                        ) : (
+                          <span>{selectedStep.quality}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedStep.materials && selectedStep.materials.length > 0 ? (
+                      <div className="materials-block">
+                        <div className="materials-title">
+                          <PackageCheck size={17} />
+                          <span>使用部品・締結部品</span>
+                        </div>
+                        {editMode ? (
+                          <label className="edit-field materials-edit">
+                            <span>1行につき1部品で入力</span>
+                            <textarea
+                              value={selectedStep.materials.join("\n")}
+                              onChange={(event) =>
+                                updateSelectedStep(
+                                  "materials",
+                                  event.target.value
+                                    .split("\n")
+                                    .map((material) => material.trim())
+                                    .filter(Boolean)
+                                )
+                              }
+                            />
+                          </label>
+                        ) : (
+                          <ul>
+                            {selectedStep.materials.map((material) => (
+                              <li key={material}>{material}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </article>
+
+                {selectedSubSteps.length > 0 ? (
+                  <section className="substep-section" aria-label="小工程詳細">
+                    <div className="section-heading compact">
+                      <ListChecks size={18} />
+                      <h3>小工程</h3>
+                      <span>{selectedSubSteps.length}件</span>
+                    </div>
+                    <div className="substep-list">
+                      {selectedSubSteps.map((subStep) => {
+                        const subStepImages = getSubStepImages(subStep).map((image, imageIndex) => ({
+                          image,
+                          imageIndex
+                        }));
+                        const mainImages = subStepImages.filter(({ image }) => (image.role ?? "main") === "main");
+                        const detailImages = subStepImages.filter(({ image }) => image.role === "detail");
+
+                        return (
+                        <article className="substep-card" key={subStep.id}>
+                          <div className="substep-media">
+                            {subStepImages.length > 0 ? (
+                              <>
+                                {mainImages.length > 0 ? (
+                                  <div className="substep-image-group main">
+                                    <span className="image-group-label">主写真</span>
+                                    <div className="substep-image-grid main">
+                                      {mainImages.map(({ image, imageIndex }) =>
+                                        renderSubStepImageCard(subStep, image, imageIndex)
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : null}
+                                {detailImages.length > 0 ? (
+                                  <div className="substep-image-group detail">
+                                    <span className="image-group-label">詳細</span>
+                                    <div className="substep-image-grid detail">
+                                      {detailImages.map(({ image, imageIndex }) =>
+                                        renderSubStepImageCard(subStep, image, imageIndex)
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </>
+                            ) : (
+                              <ImageIcon size={40} aria-hidden="true" />
+                            )}
+                            {editMode && !subStep.images?.length ? (
+                              <label className="edit-field substep-caption-edit">
+                                <span>写真キャプション</span>
+                                <input
+                                  className="edit-input"
+                                  value={subStep.imageCaption ?? ""}
+                                  onChange={(event) =>
+                                    updateSelectedSubStep(subStep.id, "imageCaption", event.target.value)
+                                  }
+                                  placeholder="写真の説明"
+                                />
+                              </label>
+                            ) : !subStep.images?.length && subStep.imageCaption ? (
+                              <span>{subStep.imageCaption}</span>
+                            ) : null}
+                          </div>
+
+                          <div className="substep-content">
+                            <div className="substep-heading">
+                              <span>{subStep.id}</span>
+                              {editMode ? (
+                                <input
+                                  className="edit-input substep-title-input"
+                                  value={subStep.title}
+                                  onChange={(event) => updateSelectedSubStep(subStep.id, "title", event.target.value)}
+                                  aria-label={`${subStep.id} 小工程名`}
+                                />
+                              ) : (
+                                <h4>{subStep.title}</h4>
+                              )}
+                            </div>
+
+                            {editMode ? (
+                              <label className="edit-field">
+                                <span>作業指示</span>
+                                <textarea
+                                  value={subStep.instruction}
+                                  onChange={(event) =>
+                                    updateSelectedSubStep(subStep.id, "instruction", event.target.value)
+                                  }
+                                />
+                              </label>
+                            ) : (
+                              <p>{subStep.instruction}</p>
+                            )}
+
+                            {editMode ? (
+                              <label className="edit-field">
+                                <span>小工程メモ</span>
+                                <textarea
+                                  value={subStep.note ?? ""}
+                                  onChange={(event) => updateSelectedSubStep(subStep.id, "note", event.target.value)}
+                                  placeholder="補足や注意点"
+                                />
+                              </label>
+                            ) : subStep.note ? (
+                              <div className="note-box compact-note">
+                                <Info size={16} />
+                                <span>{subStep.note}</span>
+                              </div>
+                            ) : null}
+
+                            <div className="substep-resources">
+                              <div>
+                                <strong>使用部品</strong>
+                                {editMode ? (
+                                  <label className="edit-field substep-list-edit">
+                                    <span>1行につき1部品</span>
+                                    <textarea
+                                      value={(subStep.parts ?? []).join("\n")}
+                                      onChange={(event) =>
+                                        updateSelectedSubStep(
+                                          subStep.id,
+                                          "parts",
+                                          event.target.value
+                                            .split("\n")
+                                            .map((part) => part.trim())
+                                            .filter(Boolean)
+                                        )
+                                      }
+                                    />
+                                  </label>
+                                ) : subStep.parts && subStep.parts.length > 0 ? (
+                                  <ul>
+                                    {subStep.parts.map((part) => (
+                                      <li key={`${subStep.id}-${part}`}>{part}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <small>指定なし</small>
+                                )}
+                              </div>
+
+                              <div>
+                                <strong>使用ボルト・締結部品</strong>
+                                {editMode ? (
+                                  <label className="edit-field substep-list-edit">
+                                    <span>1行につき1項目</span>
+                                    <textarea
+                                      value={(subStep.fasteners ?? []).join("\n")}
+                                      onChange={(event) =>
+                                        updateSelectedSubStep(
+                                          subStep.id,
+                                          "fasteners",
+                                          event.target.value
+                                            .split("\n")
+                                            .map((fastener) => fastener.trim())
+                                            .filter(Boolean)
+                                        )
+                                      }
+                                    />
+                                  </label>
+                                ) : subStep.fasteners && subStep.fasteners.length > 0 ? (
+                                  <ul>
+                                    {subStep.fasteners.map((fastener) => (
+                                      <li key={`${subStep.id}-${fastener}`}>{fastener}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <small>指定なし</small>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ) : null}
+
+                {selectedGallery.length > 0 ? (
+                  <section className="gallery-section" aria-label="Excelから抽出した写真">
+                    <div className="section-heading compact">
+                      <ImageIcon size={18} />
+                      <h3>Excel写真</h3>
+                      <span>{selectedGallery.length}枚</span>
+                    </div>
+                    <div className="photo-gallery">
+                      {selectedGallery.map((image) => (
+                        <figure key={image.src} className="photo-card">
+                          <img src={image.src} alt={image.caption} />
+                          <figcaption>{image.caption}</figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+              </section>
+
+              <aside className="side-panel">
+                <section className="operation-panel source-panel" aria-label="抽出元">
+                  <div className="section-heading">
+                    <FileSpreadsheet size={20} />
+                    <h3>抽出元</h3>
+                  </div>
+                  <dl className="source-list">
+                    <div>
+                      <dt>ファイル</dt>
+                      <dd>{selected.sourceFile ?? "未設定"}</dd>
+                    </div>
+                    <div>
+                      <dt>シート</dt>
+                      <dd>{selected.sourceSheet ?? "未設定"}</dd>
+                    </div>
+                    <div>
+                      <dt>選択工程</dt>
+                      <dd>{selectedStep.sourceRows ? `Excel行 ${selectedStep.sourceRows}` : "行情報なし"}</dd>
+                    </div>
+                    <div>
+                      <dt>写真</dt>
+                      <dd>{selectedGallery.length}枚</dd>
+                    </div>
+                  </dl>
+                </section>
+              </aside>
+            </div>
+          </>
+        )}
       </section>
     </main>
   );
